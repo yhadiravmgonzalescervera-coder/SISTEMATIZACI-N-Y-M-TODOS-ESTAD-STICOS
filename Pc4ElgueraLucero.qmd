@@ -1,0 +1,383 @@
+---
+title: "PC4GRUPO2"
+author: "Lucero Alejandra Elguera Allende, Pedro Alejandro Zevallos Ramos, Yhadira Gonzales Cervera, Katherine Alessandra Siguas Aliaga, Sharely Zea Camacho"
+format: html_document
+editor: visual
+---
+
+## Instalar y cargar los paquetes
+
+```{r}
+install.packages("mice")
+install.packages("ggmice")
+```
+
+```{r}
+library(mice)
+library(tidyverse)
+library(here)
+library(rio)
+library(ggmice)
+library(gtsummary)
+```
+
+**Importando los datos**
+
+```{r}
+autismo <- import(here("data", "autismo.csv"))
+```
+
+```{r}
+head(autismo)
+```
+
+¿**Dónde están los valores perdidos en el dataset?**
+
+Antes de realizar cualquier técnica de imputación, es fundamental identificar **qué variables presentan datos faltantes** y cuántos valores faltan por cada una.\
+Para esto, podemos utilizar una combinación de `colSums()` e `is.na()`:
+
+```{r}
+colSums(is.na(autismo))
+
+```
+
+```{r}
+autismo |>
+  dplyr::select(
+    Edad,
+    Genero,
+    Etnicidad,
+    Ictericia_al_nacer,
+    Diagnostico_autismo,
+    Diagnostico_ASD,
+    Resultado,
+    Puntuacion_P1,
+    Puntuacion_P2,
+    Puntuacion_P3,
+    Puntuacion_P4,
+    Puntuacion_P5,
+    Puntuacion_P6,
+    Puntuacion_P7,
+    Puntuacion_P8,
+    Puntuacion_P9,
+    Puntuacion_P10
+  ) |>
+  ggmice::plot_pattern(
+    square = TRUE,
+    rotate = TRUE
+  )
+
+```
+
+### **Valores perdidos en el dataset**
+
+En el dataset *autismo*, el número total de valores perdidos es de (colocar número total después de ejecutar `colSums(is.na(autismo))`).\
+Las variables con mayor cantidad de datos faltantes son:
+
+-   Edad: \_\_\_ valores perdidos
+
+-   Genero: \_\_\_ valores perdidos
+
+-   Etnicidad: \_\_\_ valores perdidos
+
+-   Resultado: \_\_\_ valores perdidos
+
+-   Puntuaciones P1–P10: \_\_\_ valores perdidos en total
+
+    Además, se identificó que \_\_\_ participantes presentan valores faltantes en dos o más variables, lo que sugiere que podría existir un patrón de ausencia de datos relevante para el análisis.
+
+### **4.2 Comparación entre participantes con y sin valores perdidos**
+
+Antes de decidir si es necesaria la imputación de datos, es importante comparar si existen diferencias entre:
+
+-   Participantes con valores perdidos en una variable, y
+
+-   Participantes sin valores perdidos en esa variable.
+
+-   Esto permite evaluar si la ausencia de datos es aleatoria o si podría introducir sesgo.
+
+Para este análisis utilizamos dos variables clave del dataset:
+
+-   Edad, por ser una variable demográfica continua esencial.
+
+-   Resultado, por ser la puntuación total obtenida en la prueba.
+
+Si la distribución de estas variables es similar entre los grupos con y sin valores perdidos, entonces el análisis de casos completos sería aceptable. Por el contrario, si existen diferencias importantes, se recomienda aplicar métodos de imputación.
+
+```{r}
+# Tabla para valores perdidos en Resultado
+tabla_resultado = autismo |> 
+  dplyr::select(
+    Edad,
+    Genero,
+    Etnicidad,
+    Ictericia_al_nacer,
+    Diagnostico_autismo,
+    Diagnostico_ASD,
+    Resultado,
+    Puntuacion_P1:Puntuacion_P10
+  ) |>
+  mutate(missing = factor(
+    is.na(Resultado),
+    levels = c(FALSE, TRUE),
+    labels = c("Sin valores perdidos", "Con valores perdidos")
+  )) |> 
+  tbl_summary(
+    by = missing,
+    statistic = list(
+      all_continuous()  ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    )
+  ) |> 
+  modify_header(
+    label = "**Variable**",
+    all_stat_cols() ~ "**{level}**<br>N = {n} ({style_percent(p, digits=1)}%)"
+  ) |> 
+  modify_caption("Características de los participantes según valores perdidos en *Resultado*") |> 
+  bold_labels()
+
+tabla_edad = autismo |> 
+  dplyr::select(
+    Edad,
+    Genero,
+    Etnicidad,
+    Ictericia_al_nacer,
+    Diagnostico_autismo,
+    Diagnostico_ASD,
+    Resultado,
+    Puntuacion_P1:Puntuacion_P10
+  ) |>
+  mutate(missing = factor(
+    is.na(Edad),
+    levels = c(FALSE, TRUE),
+    labels = c("Sin valores perdidos", "Con valores perdidos")
+  )) |> 
+  tbl_summary(
+    by = missing,
+    statistic = list(
+      all_continuous()  ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    )
+  ) |> 
+  modify_header(
+    label = "**Variable**",
+    all_stat_cols() ~ "**{level}**<br>N = {n} ({style_percent(p, digits=1)}%)"
+  ) |> 
+  modify_caption("Características de los participantes según valores perdidos en *Edad*") |> 
+  bold_labels()
+
+tabla <- tbl_merge(
+  tbls = list(tabla_resultado, tabla_edad),
+  tab_spanner = c("**Resultado**", "**Edad**")
+)
+```
+
+```{r}
+tabla
+```
+
+### **¿Qué variables debo incluir en el proceso de imputación?**
+
+En el proceso de imputación debemos incluir todas las variables que vamos a usar en los análisis posteriores, incluso si no tienen valores perdidos.\
+Esto es importante porque:
+
+-   El modelo de imputación debe capturar toda la estructura y relaciones entre variables.
+
+-    Aunque una variable no tenga valores faltantes, sí contiene información útil para estimar correctamente los valores faltantes de las otras.
+
+-    Las variables categóricas deben estar en formato factor para que el algoritmo las interprete correctamente.
+
+A continuación te dejo un ejemplo de cómo seleccionar las variables necesarias y convertir `sindrom_metabolico` a factor antes de imputar.
+
+```{r}
+input_data =
+  autismo |>
+    dplyr::select(
+      Edad,
+      Genero,
+      Etnicidad,
+      Ictericia_al_nacer,
+      Diagnostico_autismo,
+      Diagnostico_ASD,
+      Resultado,
+      Puntuacion_P1:Puntuacion_P10
+    ) |>
+    mutate(
+      Genero = as.factor(Genero),
+      Etnicidad = as.factor(Etnicidad),
+      Ictericia_al_nacer = as.factor(Ictericia_al_nacer),
+      Diagnostico_autismo = as.factor(Diagnostico_autismo),
+      Diagnostico_ASD = as.factor(Diagnostico_ASD)
+    )
+
+```
+
+La función `mice()` del paquete **mice** se utiliza para realizar la imputación de datos faltantes.\
+Para aplicarla en nuestro dataset *autismo*, debemos especificar:
+
+-   **`m`**: número de imputaciones (por ejemplo, 5)
+
+-   **`seed`**: establecer una semilla para garantizar reproducibilidad
+
+-   **`method`**: vector donde asignamos el tipo de imputación a cada variable
+
+Para tus datos:
+
+-   Las variables continuas (Edad, Resultado, P1–P10) usarán `"pmm"` (predictive mean matching).
+
+-   Las variables categóricas (Genero, Etnicidad, Ictericia_al_nacer, Diagnostico_autismo, Diagnostico_ASD) usarán `"logreg"` si son binarias y `""` si no tienen valores perdidos
+
+-   Las variables sin valores perdidos deben colocarse como `""` en el vector `method`.
+
+Para saber el orden exacto de las variables, usamos:
+
+```{r}
+names(input_data)
+```
+
+El método de imputación la indicaremos con el argumento `method` en el mismo orden que aparecen las variables en el dataset.
+
+```{r}
+data_imputada =
+  mice(
+    input_data,
+    m = 20,
+    method = c(
+      "pmm",      # 1. Edad
+      "polyreg",  # 2. Genero
+      "polyreg",  # 3. Etnicidad
+      "logreg",   # 4. Ictericia_al_nacer
+      "logreg",   # 5. Diagnostico_autismo
+      "logreg",   # 6. Diagnostico_ASD
+      "pmm",      # 7. Resultado
+      rep("pmm", 10)  # 8–17 Puntuacion_P1 a Puntuacion_P10
+    ),
+    maxit = 20,
+    seed = 3,
+    print = FALSE
+  )
+
+```
+
+```{r}
+data_imputada
+```
+
+El resultado de la imputación se ha guardado en el objeto **`data_imputada`**, el cual es un objeto de clase **`mids`** (multiply imputed dataset).\
+Este objeto muestra:
+
+-   El número de imputaciones realizadas (**20**),
+
+-   El método empleado para cada una de las variables
+
+-   Y una matriz indicando qué variables fueron utilizadas para predecir otras durante el proceso de imputación.
+
+## **Analizando los datos imputados**
+
+Antes de proceder con cualquier análisis estadístico posterior, es indispensable explorar los valores que han sido imputados.\
+Idealmente, los valores imputados deben ser plausibles y consistentes con los valores originalmente observados.
+
+Para verificar esta coherencia, se suele utilizar un gráfico de cajas y dispersión (boxplot + jitter) comparando:
+
+-   Los valores observados, y
+
+-   Los valores imputados en cada una de las 20 bases generadas por `mice()`
+
+-   A modo de ejemplo, si queremos explorar la distribución imputada de la variable **`autismo_total`** (o cualquier variable continua de tu dataset), podemos emplear lo siguiente:
+
+```{r}
+ggmice(data_imputada, aes(x = .imp, y = Puntuacion_P5)) +
+  geom_jitter(height = 0, width = 0.25) +
+  geom_boxplot(width = 0.5, size = 1, alpha = 0.55, outlier.shape = NA) +
+  labs(x = "Número de imputación")
+```
+
+Con esta función, los datos observados se muestran en el grupo correspondiente a `.imp = 0`, mientras que los demás boxplots representan las 20 imputaciones generadas por el algoritmo *mice*. Para el caso de la variable Puntuacion_P5, se observa que los valores imputados se mantienen dentro del rango de los valores observados, por lo que pueden considerarse plausibles y consistentes con la distribución real.
+
+## **Para la variable *Puntuacion_P8***
+
+```{r}
+ggmice(data_imputada, aes(x = .imp, y = Puntuacion_P8)) +
+  geom_jitter(height = 0, width = 0.25) +
+  geom_boxplot(width = 0.5, size = 1, alpha = 0.55, outlier.shape = NA) +
+  labs(x = "Número de imputación")
+```
+
+Para poder comparar la distribución de las variables categóricas imputadas entre los datos observados y los imputados, es necesario transformar el objeto imputado de clase **mids** a un formato tipo *long*. Esto se realiza con la función `complete()`, indicando `"long"` como opción.
+
+De esta manera, cada imputación se convierte en una versión completa del dataset, y se agrega una columna llamada `.imp` que identifica si el registro corresponde a:
+
+-   `.imp = 0` → datos observados (sin imputación)
+
+-   `.imp = 1…20` → cada una de las 20 imputaciones generadas
+
+La siguiente línea genera esta estructura:
+
+```{r}
+data_imputada_l <- complete(data_imputada, "long", include = TRUE)
+```
+
+Posteriormente, se generó una tabla de dos entradas para comparar la distribución de la variable categórica imputada Resultado entre los datos observados y los datos imputados. Para ello, se añadió una nueva variable (`imputed`) que identifica si el valor proviene del dataset original (`Observado`) o de alguna de las 20 imputaciones generadas (`Imputado`).
+
+El siguiente código calcula la proporción de cada categoría de la variable Resultado, separada por tipo de dato (observado vs imputado):
+
+```{r}
+data_imputada_l <- data_imputada_l %>% 
+  mutate(
+    imputed = .imp > 0,
+    imputed = factor(
+      imputed,
+      levels = c(FALSE, TRUE),
+      labels = c("Observado", "Imputado")
+    )
+  )
+
+prop.table(
+  table(
+    data_imputada_l$Resultado,
+    data_imputada_l$imputed
+  ),
+  margin = 2
+)
+
+```
+
+```{r}
+tabla_multi <-
+  data_imputada |>
+  with(glm(Resultado ~ Edad + Genero + Etnicidad + Ictericia_al_nacer +
+             Diagnostico_autismo + Diagnostico_ASD +
+             Puntuacion_P1 + Puntuacion_P2 + Puntuacion_P3 + Puntuacion_P4 +
+             Puntuacion_P5 + Puntuacion_P6 + Puntuacion_P7 + Puntuacion_P8 +
+             Puntuacion_P9 + Puntuacion_P10,
+           family = binomial(link = "logit"))) |>
+  tbl_regression(
+    exponentiate = TRUE,
+    label = list(
+      Edad ~ "Edad",
+      Genero ~ "Género",
+      Etnicidad ~ "Etnicidad",
+      Ictericia_al_nacer ~ "Ictericia al nacer",
+      Diagnostico_autismo ~ "Diagnóstico de Autismo",
+      Diagnostico_ASD ~ "Diagnóstico ASD",
+      Puntuacion_P1 ~ "Puntuación P1",
+      Puntuacion_P2 ~ "Puntuación P2",
+      Puntuacion_P3 ~ "Puntuación P3",
+      Puntuacion_P4 ~ "Puntuación P4",
+      Puntuacion_P5 ~ "Puntuación P5",
+      Puntuacion_P6 ~ "Puntuación P6",
+      Puntuacion_P7 ~ "Puntuación P7",
+      Puntuacion_P8 ~ "Puntuación P8",
+      Puntuacion_P9 ~ "Puntuación P9",
+      Puntuacion_P10 ~ "Puntuación P10"
+    )
+  ) |>
+  bold_p(t = 0.05) |>
+  modify_header(estimate = "**OR ajustado**", p.value = "**p valor** ")
+
+```
+
+```{r}
+table(input_data$Resultado)
+str(input_data$Resultado)
+```

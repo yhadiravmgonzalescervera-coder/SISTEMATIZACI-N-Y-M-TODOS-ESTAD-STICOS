@@ -1,0 +1,55 @@
+---
+title: "Manejo y Control de la Calidad de Datos - Dataset Autismo"
+format: qmd
+---
+
+# 1. Importación de datos
+
+# Cargar librería
+library(readxl)
+
+# Importar el dataset
+datos <- read_excel("autismo.xlsx")
+
+# Ver primeras filas
+head(datos)
+
+------------------------------------------------------------------------
+
+# 2. Exploración inicial
+
+str(datos)        # estructura
+summary(datos)    # resumen estadístico
+dim(datos)        # dimensiones
+colSums(is.na(datos)) # valores faltantes por columna
+
+------------------------------------------------------------------------
+
+# 3. Limpieza de datos
+
+library(dplyr)
+
+# Renombrar columnas (ejemplo: ajustar según las variables de tu dataset)
+datos <- datos %>%
+  rename(Edad = age, Genero = gender)
+
+# Convertir variable a factor
+datos$Genero <- as.factor(datos$Genero)
+
+# Crear una nueva variable RangoEdad
+datos <- datos %>%
+  mutate(RangoEdad = case_when(
+    Edad < 18 ~ "Menor de edad",
+    Edad >= 18 & Edad < 40 ~ "Adulto joven",
+    Edad >= 40 ~ "Adulto mayor"
+  ))
+
+# Verificamos cambios
+head(datos)
+
+------------------------------------------------------------------------
+
+# 4. Exportación de datos
+
+write.csv(datos, "autismo_limpio.csv", row.names = FALSE)
+

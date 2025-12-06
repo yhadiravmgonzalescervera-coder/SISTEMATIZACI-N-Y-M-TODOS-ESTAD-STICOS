@@ -1,0 +1,148 @@
+---
+title: "Autismo"
+author: "Lucero Alejandra Elguera Allende, Pedro Alejandro Zevallos Ramos, Kenny Abimelec del Aguila Gutierrez, Katherine Alessandra Siguas Aliaga, Sharely Zea Camacho"
+format: html
+editor: visual
+---
+
+## Instalación de paquetes
+
+```{r}
+install.packages("finalfit")
+installed.packages("flextable")
+install.packages("gtsummary")
+install.packages("tidyverse")
+install.packages("here")
+install.packages("rio")
+install.packages("systemfonts")
+install.packages("gdtools")
+install.packages("flextable", dependencies= TRUE)
+```
+
+## Verificación de paquetes
+
+```{r}
+library(tidyverse)
+library(here)
+library(rio)
+library(gtsummary)
+library(finalfit)
+library(flextable)
+```
+
+## Importar data
+
+```{r}
+data_autismo = import(here("data", "autismo.csv"))
+```
+
+Variables
+
+```{r}
+str(data_autismo)
+```
+
+**Resumen de variables**
+
+```{r}
+table(data_autismo$Diagnostico_autismo, useNA = "ifany")
+```
+
+```{r}
+prop.table(table(data_autismo$Diagnostico_autismo, useNA = "ifany"))
+```
+
+```{r}
+colnames(data_autismo)
+```
+
+```{r}
+names(data_autismo) <- trimws(names(data_autismo))
+```
+
+```{r}
+data_autismo |> count(`Autismo, sort = TRUE)
+```
+
+```{r}
+prop.table(table(data_autismo$Ictericia_al_nacer, useNA = "ifany"))
+```
+
+```{r}
+data_autismo |> count(Ictericia_al_nacer, sort = TRUE)
+```
+
+**RESUMEN DE VARIABLES CONTINUAS**
+
+MEDIA
+
+```{r}
+mean(data_autismo$Resultado, na.rm = TRUE)
+```
+
+DESVIACIÓN ESTANDAR
+
+```{r}
+sd(data_autismo$Resultado, na.rm = TRUE)
+```
+
+OTRAS MEDIDAS
+
+```{r}
+median(data_autismo$Resultado, na.rm = TRUE)
+```
+
+```{r}
+min(data_autismo$Resultado, na.rm = TRUE)
+```
+
+```{r}
+IQR(data_autismo$Resultado, na.rm = TRUE)
+```
+
+**¿Desviación estandar o rango intercuartilo?**
+
+```{r}
+par(mfrow = c(1, 2))   # Configura la ventana en 1 fila y 2 columnas
+hist(data_autismo$Resultado)
+```
+
+**Funcion summary**
+
+```{r}
+summary(data_autismo$Resultado)
+```
+
+OTRA VARIABLE
+
+```{r}
+data_autismo|> group_by(Edad) |> summarise(n_observ=n(), porcentaje=(n_observ / nrow(data_autismo)*100))
+```
+
+```{r}
+data_autismo <- data_autismo %>%
+  mutate(Genero_num = ifelse(Genero == "Masculino", 1,
+                      ifelse(Genero == "Femenino", 0, NA)))
+```
+
+```{r}
+resumen_autismo <- data_autismo %>%
+  group_by(Edad) %>%
+  summarise(promedio_genero = mean(Genero_num, na.rm = TRUE))
+```
+
+```{r}
+print(resumen_autismo)
+```
+
+```{r}
+data_autismo|> group_by(Genero, Edad)|> summarize(promedio=mean(Ictericia_al_nacer, na.rm))
+```
+
+```{r}
+data_autismo|> group_by(Genero,Edad)|> summarize(promedio=mean(Ictericia_al_nacer, na.rm=TRUE))
+```
+
+```{r}
+data_autismo|> select(Edad,Diagnostico_autismo,Genero,Ictericia_al_nacer)|>tbl_summary()
+```

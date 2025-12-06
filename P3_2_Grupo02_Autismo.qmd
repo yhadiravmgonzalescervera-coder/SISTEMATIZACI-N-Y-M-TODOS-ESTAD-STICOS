@@ -1,0 +1,290 @@
+---
+title: "PC3_2"
+author: "Lucero Alejandra Elguera Allende, Pedro Alejandro Zevallos Ramos, Yhadira Gonzales Cervera, Katherine Alessandra Siguas Aliaga, Sharely Zea Camacho"
+format: html
+editor: visual
+---
+
+```{r}
+install.packages("logistf")
+```
+
+## Verificación de paquetes
+
+```{r}
+library(tidyverse)
+library(here)
+library(rio)
+library(gtsummary)
+library(car)
+library(survival)
+library(readr)
+library(logistf)
+```
+
+## Importar data
+
+```{r}
+autismo <- Import(here("data", "autismo.csv"))
+```
+
+Un vistazo a los datos
+
+```{r}
+head(autismo)
+```
+
+**Análisis univariado**
+
+```{r}
+autismo_1 <- autismo |>
+  mutate(
+    Genero = relevel(as.factor(Genero), ref = "Femenino"),
+    Diagnostico_autismo = relevel(as.factor(Diagnostico_autismo), ref = "No"),
+    Resultado_bin = ifelse(Resultado == 0, "No", "Si"),
+    Resultado_bin = relevel(as.factor(Resultado_bin), ref = "No")
+  ) |>
+  na.omit()
+```
+
+```{r}
+tabla_reg_log_univ <- autismo_1 |>
+  tbl_uvregression(
+    include = c(Edad, Genero, Diagnostico_autismo),
+    y = Resultado_bin,
+    method = logistf,        # <— CAMBIO AQUÍ
+    exponentiate = TRUE,
+    conf.int = TRUE,
+    hide_n = TRUE,
+    add_estimate_to_reference_rows = FALSE,
+    pvalue_fun = ~ style_pvalue(.x, digits = 3),
+    estimate_fun = ~ style_number(.x, digits = 2),
+    label = list(
+      Edad ~ "Edad (años)",
+      Genero ~ "Género",
+      Diagnostico_autismo ~ "Diagnóstico de Autismo"
+    )
+  ) |>
+  bold_labels() |>
+  bold_p(t = 0.05) |>
+  modify_header(estimate = "**OR no ajustado**", p.value = "**Valor P**")
+```
+
+```{r}
+tabla_reg_log_univ
+```
+
+En el análisis univariado, ninguna de las variables evaluadas (edad, género y diagnóstico de autismo) mostró asociación estadísticamente significativa con el resultado (todos los valores p \> 0.05). Los intervalos de confianza de los OR fueron extremadamente amplios, reflejando inestabilidad en las estimaciones debido al bajo número de observaciones en algunas categorías y a la presencia de separación completa. Por lo tanto, aunque algunos OR parecen elevados, no existe evidencia suficiente para afirmar una relación real entre las variables estudiadas y el resultado.
+
+```{r}
+var_modelo_firth <- logistf(
+  Resultado_bin ~ Edad + Genero + Diagnostico_autismo,
+  data = autismo_1
+)
+
+summary(var_modelo_firth)
+```
+
+Tras ajustar un modelo de regresión logística penalizada (Firth) para corregir la separación completa observada en la base de datos, se encontró que ninguna de las variables (Edad, Género, Diagnóstico de Autismo) se asoció de manera significativa con el resultado (p \> 0.14). Todos los odds ratios presentaron intervalos de confianza muy amplios, lo que indica una baja precisión en las estimaciones. Por ello, no puede establecerse una relación estadísticamente significativa entre las variables estudiadas y el desenlace.
+
+```{r}
+m_full <- logistf(
+  Resultado_bin ~ Edad + Genero + Diagnostico_autismo,
+  data = autismo_1,
+  control = logistf.control(maxit = 200, maxstep = 0.5)
+)
+```
+
+```{r}
+m_full <- logistf(
+  Resultado_bin ~ Edad + Genero + Diagnostico_autismo,
+  data = autismo_1,
+  control = logistf.control(maxit = 200, maxstep = 0.5)
+)
+```
+
+```{r}
+m1 <- logistf(
+  Resultado_bin ~ Edad + Genero,
+  data = autismo_1,
+  control = logistf.control(maxit = 200, maxstep = 0.5)
+)
+
+m2 <- logistf(
+  Resultado_bin ~ Edad + Diagnostico_autismo,
+  data = autismo_1,
+  control = logistf.control(maxit = 200, maxstep = 0.5)
+)
+
+m3 <- logistf(
+  Resultado_bin ~ Genero + Diagnostico_autismo,
+  data = autismo_1,
+  control = logistf.control(maxit = 200, maxstep = 0.5)
+)
+```
+
+```{r}
+anova(m_full, m1)
+```
+
+```{r}
+anova(m_full, m2)
+```
+
+```{r}
+anova(m_full, m3)
+```
+
+Al analizar el efecto de la Edad, el Género y el Diagnóstico de autismo sobre el resultado binario mediante un modelo de regresión logística penalizada (`logistf`), se observa que ninguna de las variables incluidas muestra asociación significativa con el desenlace.
+
+Los coeficientes obtenidos indican que los cambios en la edad no modifican de manera importante la probabilidad del resultado, y que el género tampoco presenta un efecto relevante. Asimismo, el diagnóstico de autismo no se comporta como un predictor significativo dentro de este modelo.
+
+En conjunto, los resultados sugieren que ninguna de las variables evaluadas aporta valor predictivo para explicar el desenlace en este dataset, por lo que su influencia estadística es limitada.
+
+## **Interpretación variable por variable**
+
+### **1. Edad**
+
+Las distintas categorías de edad no mostraron un efecto significativo sobre la probabilidad del desenlace. Aunque algunos coeficientes fueron positivos, sus intervalos de confianza fueron muy amplios e incluían el valor nulo, lo que indica ausencia de evidencia estadística de asociación.
+
+### **2. Género**
+
+Ser masculino mostró un coeficiente positivo en el modelo, sugiriendo una posible mayor probabilidad del desenlace; sin embargo, este resultado no fue estadísticamente significativo. Por ello, no se puede concluir que el género influya en el resultado.
+
+### **3. Diagnóstico de Autismo**
+
+El diagnóstico de autismo presentó un coeficiente negativo, pero nuevamente con un intervalo de confianza muy amplio y un valor p no significativo. Esto indica que el diagnóstico no tiene un efecto claro ni confiable sobre el desenlace.
+
+**Renombramos variables**
+
+```{r}
+multi_backward <- m1
+multi_stepwise <- m2
+multi_forward <- m3
+```
+
+```{r}
+performance::check_collinearity(multi_backward, ci = NULL)
+```
+
+```{r}
+performance::check_collinearity(multi_forward, ci = NULL)
+```
+
+```{r}
+performance::check_collinearity(multi_stepwise, ci = NULL)
+```
+
+La evaluación de colinealidad se realizó para los tres modelos obtenidos mediante los métodos de selección de variables (backward, forward y stepwise), utilizando la función *check_collinearity()* del paquete performance.
+
+En los tres modelos, los valores de VIF (Factor de Inflación de la Varianza) fueron menores a 2, y la tolerancia se mantuvo por encima de 0.70, lo que indica una colinealidad muy baja entre las variables incluidas. Específicamente:
+
+-   **Modelo backward (Edad + Género):**
+
+    -    Género presentó VIF = 1.31 y tolerancia = 0.76.
+
+        Esto corresponde a *baja colinealidad*.
+
+-   **Modelo forward (Género + Diagnóstico de Autismo):**
+
+    -   Ambos predictores mostraron VIF = 1.01–1.00 y tolerancia = 0.99.
+
+        No existe colinealidad significativa.
+
+-   **Modelo stepwise (Edad + Diagnóstico de Autismo):**
+
+    -   Los predictores mostraron VIF = 1.08 y tolerancia = 0.93.
+
+        Esto también indica *baja colinealidad*.
+
+\
+No se identificó colinealidad relevante entre las variables incluidas en ninguno de los modelos seleccionados. Por lo tanto, los predictores pueden ser incorporados en los modelos de regresión logística sin riesgo de distorsión o inestabilidad en las estimaciones.
+
+**Reporte del análisis univariado y multivariado**
+
+Como en las sesiones anteriores, reportaremos los resultados del modelo final de regresión logística.
+
+Tabla para los resultados de la regresión univariado (no ajustado
+
+```{r}
+tabla_univ <- autismo_1 |>
+tbl_uvregression(
+include = c(Edad, Genero, Diagnostico_autismo),
+y = Resultado_bin,
+method = glm,
+method.args = list(family = binomial),
+exponentiate = TRUE,
+conf.int = TRUE,
+hide_n = TRUE,
+add_estimate_to_reference_rows = FALSE,
+pvalue_fun = ~ style_pvalue(.x, digits = 3),
+estimate_fun = ~ style_number(.x, digits = 2),
+label = list(
+Edad ~ "Edad (años)",
+Genero ~ "Género",
+Diagnostico_autismo ~ "Diagnóstico de Autismo"
+)
+) |>
+bold_labels() |>
+bold_p(t = 0.05) |>
+modify_header(estimate = "**OR**", p.value = "**Valor P**")
+
+```
+
+Tabla para los resultados de la regresión multivariable (ajustado)
+
+```{r}
+tabla_multi <- tbl_regression(
+  modelo_firth,
+  exponentiate = TRUE,
+  conf.int = TRUE,
+  tidy_fun = broom.helpers::tidy_parameters,  # ← esto oculta el aviso
+  pvalue_fun = ~ style_pvalue(.x, digits = 3),
+  estimate_fun = ~ style_number(.x, digits = 2),
+  label = list(
+    Genero ~ "Género",
+    Diagnostico_autismo ~ "Diagnóstico de Autismo"
+  )
+) |>
+  bold_labels() |>
+  bold_p(t = 0.05) |>
+  modify_header(estimate = "**OR (Firth)**", p.value = "**Valor P**")
+
+```
+
+```{r}
+tabla_final <- 
+  tbl_merge(
+    list(tabla_univ, tabla_multi),
+    tab_spanner = c("**Univariado**", "**Multivariado**")
+  ) %>% 
+  bold_labels()
+```
+
+```{r}
+tabla_final
+```
+
+En este análisis se evaluaron las asociaciones entre las variables Edad, Género y Diagnóstico de Autismo con el resultado binario estudiado.
+
+#### Resultados univariados:
+
+-   **Edad:** Todos los grupos de edad presentan un OR de 1 o 0 con intervalos de confianza extremadamente amplios (desde 0 hasta infinito) y valores p mayores a 0.999, lo que indica ausencia de evidencia estadística para asociar la edad con el resultado. Esto sugiere falta de poder estadístico y posible problema de datos escasos o separación.
+
+-    **Género:** El OR estimado para masculinos respecto a femeninos es extremadamente alto (aproximadamente 206 millones) con un intervalo que va desde 0 hasta casi 1 y un valor p no significativo (0.997). Esto indica que la estimación es inestable y no hay evidencia confiable de asociación.
+
+-   **Diagnóstico de Autismo:** De forma similar, el OR es extremadamente alto (\~9.6 millones) con intervalos igualmente amplios y p no significativo, indicando ausencia de asociación estadística.
+
+#### Resultados multivariados con corrección de Firth:
+
+-   Los OR ajustados para Género (7.72; IC 0.40–1135.79; p=0.172) y Diagnóstico de Autismo (0.81; IC 0.04–120.22; p=0.899) muestran estimaciones más razonables pero con intervalos amplios y valores p no significativos, indicando ausencia de asociación estadísticamente significativa tras ajuste.
+
+-   Para **Edad**, los resultados no muestran asociación estadística significativa.
+
+### Conclusión
+
+No se encontró evidencia estadística significativa que relacione la edad, el género o el diagnóstico de autismo con el resultado analizado. Los resultados univariados presentan estimaciones inestables e imprecisas con intervalos muy amplios y valores p elevados, reflejando posible problema de separación en los datos o baja cantidad de eventos.
+
+El uso de regresión logística penalizada (método de Firth) estabiliza las estimaciones, aunque mantiene la ausencia de significancia estadística.
+
+Se recomienda interpretar estos resultados con cautela y considerar

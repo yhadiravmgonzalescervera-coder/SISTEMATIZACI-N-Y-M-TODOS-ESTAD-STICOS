@@ -1,0 +1,164 @@
+---
+title: "Autismo Pc2"
+author: "Lucero Alejandra Elguera Allende, Pedro Alejandro Zevallos Ramos, Kenny Abimelec del Aguila Gutierrez, Katherine Alessandra Siguas Aliaga, Sharely Zea Camacho"
+format: html
+editor: visual
+---
+
+## Cargar e instalar paquetes 
+
+```{r}
+install.packages("car")
+install.packages("gtsummary")
+install.packages("flextable")
+install.packages("officer")
+```
+
+```{r}
+library(tidyverse)
+library(here)
+library(gtsummary)
+library(car)
+library(rio)
+library(ggplot2)
+library(gtsummary)
+library(flextable)
+library(officer)
+library(dplyr)
+
+```
+
+## Cargando los datos
+
+```{r}
+autismo <- Import(here("data", "autismo.csv"))
+```
+
+```{r}
+head(autismo)
+```
+
+```{r}
+summary(autismo)
+```
+
+```{r}
+ggplot(autismo, aes(x = Resultado)) +
+  geom_histogram(
+    color = "white", 
+    fill = "lightblue", 
+    bins = 30
+  ) +
+  labs(
+    y = "Frecuencia", 
+    x = "Resultado"
+  ) +
+  geom_vline(
+    xintercept = mean(autismo$puntuacion_autismo, na.rm = TRUE), 
+    color = "darkred", 
+    size = 1.5
+  )
+```
+
+```{r}
+mean(autismo$Resultado, na.rm=TRUE)
+```
+
+```{r}
+plot(autismo$Resultado ~ autismo$Edad, 
+     data = autismo, 
+     col = "gray", 
+     ylab = "Resultado", 
+     xlab = "Edad (años)", 
+     las = 1, 
+     pch = 20, 
+     font.lab = 2, 
+     font.axis = 2)
+abline(lm(autismo$Resultado ~ autismo$Edad, data = autismo), 
+       lwd = 2, 
+       col = "darkred")
+
+```
+
+```{r}
+modelo_autismo = lm(Resultado ~ Edad, data = autismo)
+
+```
+
+```{r}
+summary(modelo_autismo)
+
+```
+
+```{r}
+modelo_autismo = lm(Resultado ~ Edad, data = autismo)
+
+```
+
+```{r}
+theme_gtsummary_language("es")
+
+tabla_report <- modelo_autismo |>
+  tbl_regression(intercept = T,
+                estimate_fun = function(x) style_sigfig(x, digits = 4),
+                pvalue_fun = function(x) style_pvalue(x, digits = 3),
+                label = list(Edad ~ "Edad (años)")) |>
+  modify_caption("Regresión del resultado en función de la edad")
+
+tabla_report
+```
+
+```{r}
+tabla_report |>
+  as_flex_table() |>
+  flextable::save_as_docx(path = "tabla_report.docx")
+```
+
+```{r}
+autismo$Edad <- as.numeric(as.character(autismo$Edad))
+
+
+```
+
+```{r}
+autismo |>
+  filter(Genero == "Masculino") |>
+  summarise(shapiro = list(shapiro.test(Edad))) |>
+  pull(shapiro)
+```
+
+```{r}
+var.test(Resultado ~ Genero, data = autismo)
+
+```
+
+```{r}
+t.test(Resultado ~ Genero, data = autismo, var.equal = TRUE)
+
+```
+
+```{r}
+autismo |>
+  group_by(Genero, Ictericia_al_nacer) |>
+  summarise(
+    count = n(),
+    mean = mean(Resultado, na.rm = TRUE),
+    sd = sd(Resultado, na.rm = TRUE),
+    min = min(Resultado, na.rm = TRUE),
+    max = max(Resultado, na.rm = TRUE)
+  )
+```
+
+```{r}
+res_anova = aov(Resultado ~ Ictericia_al_nacer, data = autismo)
+```
+
+```{r}
+summary(res_anova)
+
+```
+
+```{r}
+TukeyHSD(res_anova)
+
+```

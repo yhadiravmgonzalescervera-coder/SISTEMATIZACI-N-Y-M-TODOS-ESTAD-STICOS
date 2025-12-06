@@ -1,0 +1,130 @@
+---
+title: "PC2_ACT1"
+format: html
+editor: visual
+---
+
+# Instalar y Cargar paquetes para el cálculo de análisis de poder estadístico
+
+```{r}
+install.packages("epiR")
+```
+
+```{r}
+library(epiR)
+```
+
+# 1. Cálculo de muestra para un estudio de prevalencia (survey)
+
+Un grupo de investigadores desea estimar la prevalencia de los trastornos del espectro autista (TEA) en niños de 0 a 14 años de edad en el Perú. Un estudio previo realizado en Colombia, basado en datos del sistema gubernamental de salud (SISPRO), determinó que la prevalencia de TEA fue de 18,7 por cada 10 000 niños (DOI:[https://doi.org/10.1016/j.rasd.2022.102045)](https://www.sciencedirect.com/science/article/abs/pii/S1750946722001325?via%3Dihub).
+
+¿Cuál sería el tamaño de muestra necesario?
+
+En este caso, se emplea la función `epi.sssimpleestb()`, la cual permite calcular el tamaño de muestra necesario para estimar una proporción o resultado binario mediante un muestreo aleatorio simple.
+
+```{r}
+epi.sssimpleestb(
+  N = NA,           # población grande o desconocida
+  Py = 0.00187,     # prevalencia estimada (18.7 / 10,000)
+  epsilon = 0.20,   # error relativo (20 %)
+  error = "relative",
+  se = 1,           # sensibilidad asumida
+  sp = 1,           # especificidad asumida
+  nfractional = FALSE,
+  conf.level = 0.95 # nivel de confianza del 95 %
+)
+```
+
+El tamaño de muestra necesario para estimar la prevalencia de TEA en la población infantil peruana, con un error relativo del 20 % y un nivel de confianza del 95 %, es de aproximadamente **51 261 niños**.
+
+# 2. Cálculo de muestra para un estudio de casos y controles
+
+El trastorno del espectro autista (TEA) constituye un importante problema de salud pública, debido a su impacto familiar, social y económico. Un grupo de investigadores desea evaluar la asociación entre el TEA y la edad de los progenitores al momento del parto.
+
+Para ello, se realizará un estudio de casos y controles, conformado por niños con diagnóstico de TEA (casos) y niños neurotípicos (controles). En un estudio previo, con 243 casos y 886 controles, se reportó una razón de momios (odds ratio) de 2.15 para madres de 35 años o más, en comparación con madres menores de 25 años.
+
+(DOI: <https://doi.org/10.1590/0102-311X00109917>)
+
+Asimismo, la prevalencia de exposición (edad materna ≥ 35 años) entre los controles fue de aproximadamente 25 %.
+
+**¿Cuál sería el tamaño de muestra necesario de casos y controles?**
+
+En este caso, se utiliza la función `epi.sscc()` del paquete epiR, la cual permite calcular el tamaño de muestra, el poder estadístico o la razón de momios mínima detectable en estudios de casos y controles, tanto apareados como no apareados.
+
+```{r}
+epi.sscc(
+  OR = 2.15,# Razón de momios (odds ratio) esperada entre casos y controles.
+  p1 = NA, # Proporción de exposición en los casos (no se coloca directamente
+  p0 = 0.25, 
+  n = NA, # Se deja en NA porque queremos que el programa calcule el tamaño de muestra necesario.
+  power = 0.80,     # Potencia estadística deseada (80%), es decir,
+  r = 1,   # Razón de casos a controles (1:1 → igual número de casos y controles).
+  phi.coef = 0,   # Se usa 0 cuando los grupos son independientes (no pareados).
+  design = 1,       # Factor de diseño. Se deja en 1 si es muestreo aleatorio simple
+  sided.test = 2,   # Tipo de prueba: 2 para bilateral (α = 0.05).
+  conf.level = 0.95,# Nivel de confianza del 95%.
+  method = "unmatched", # Especifica que el estudio es de casos y controles no apareados.
+  nfractional = FALSE,
+  fleiss = FALSE        
+)
+```
+
+El tamaño de muestra necesario para detectar una razón de momios (OR) de 2.15, considerando una prevalencia de exposición del 25% en los controles, una potencia del 80% y un nivel de confianza del 95%, fue de 248 participantes, distribuidos equitativamente en 124 casos y 124 controles.
+
+Esto garantiza que el estudio tenga suficiente capacidad para identificar una asociación real entre la edad parental avanzada y el riesgo de TEA, si esta existe en la población.
+
+# 3. Cálculo de muestra para un estudio de cohorte
+
+Un grupo de investigadores desea evaluar el efecto de la depresión materna durante el embarazo sobre el riesgo de trastornos del espectro autista (TEA) en los hijos. Para ello, se plantea realizar un estudio de cohorte en hospitales del Perú, en el que se dará seguimiento a las madres embarazadas y a sus hijos hasta los 3 años de edad, para identificar los casos diagnosticados de TEA.
+
+Los investigadores buscan contar con un 80 % de poder estadístico para detectar un riesgo relativo (RR) de 1.72, en una cohorte de 194 494 parejas madre-hijo en el Reino Unido. En dicho estudio, entre las mujeres sin depresión ni exposición a antidepresivos, se identificó una prevalencia de TEA de 2154 por 194 494 nacimientos, equivalente a aproximadamente 1.1 %**.**
+
+(DOI: <https://doi.org/10.2147/CLEP.S180618>)
+
+¿Cuál sería el tamaño de muestra necesario para los grupos de madres expuestas (con depresión durante el embarazo) y no expuestas (sin depresión)?
+
+Para responder esta pregunta, se utiliza la función `epi.sscohortt()` del paquete **epiR**.\
+
+Esta herramienta permite calcular el tamaño de muestra, el poder estadístico o el riesgo relativo mínimo detectable en estudios de cohorte, donde los participantes son seguidos durante un periodo determinado de tiempo con el fin de observar la aparición de un desenlace (por ejemplo, el diagnóstico de TEA).
+
+```{r}
+epi.sscohortt(
+  irexp1 = 0.011 * 1.72,   # incidencia esperada de TEA en hijos de madres con depresión
+  irexp0 = 0.011,          # incidencia de TEA en hijos de madres sin depresión
+  FT = 3,                  # años de seguimiento (≥3 según el artículo)
+  n = NA,                  # se desea calcular tamaño de muestra
+  power = 0.80,            # poder estadístico del 80 %
+  r = 1,                   # proporción 1:1 entre expuestas y no expuestas
+  design = 1,              # muestreo simple aleatorio
+  sided.test = 2,          # prueba bilateral
+  nfractional = FALSE,     # tamaño de muestra entera
+  conf.level = 0.95        # nivel de confianza del 95 %
+)
+```
+
+Para detectar una razón de riesgos (RR) de 1.72 en el riesgo de TEA entre hijos de mujeres con depresión tratada con antidepresivos frente a mujeres no expuestas, se requeriría reclutar aproximadamente 5070 participantes en total (2535 en cada grupo), asumiendo un seguimiento completo y sin pérdidas significativas.
+
+# 4. Cálculo de poder estadístico
+
+Un grupo de investigadores desea evaluar el efecto de la diabetes materna sobre el riesgo de TEA en la descendencia. Para ello, reclutarán participantes de hospitales y centros de salud materna, y seguirán a los niños hasta los 5 años para identificar los casos de TEA. Se planea incluir a 150 madres con diabetes (tipo 1, tipo 2 o gestacional) y a 150 madres sin diabetes, con el objetivo de detectar un riesgo relativo de TEA asociado a la diabetes materna de 1,48.
+
+(DOI: [10.1007/s10803-013-1928-2](https://doi.org/10.1007/s10803-013-1928-2))
+
+¿Cuál es el poder estadístico con el tamaño de muestra propuesto para cada grupo?
+
+Para realizar este cálculo, se empleó la función `epi.sscohortt()`, la cual permite estimar el tamaño de muestra, el poder estadístico o la razón mínima de tasas de incidencia detectable en estudios de cohorte, considerando datos de tiempo de seguimiento por persona o por animal.
+
+```{r}
+epi.sscohortt(irexp1 = 0.0195 * 1.48,   # incidencia esperada de TEA en hijos de madres con diabetes
+              irexp0 = 0.0195,        # incidencia de TEA en hijos de madres sin diabetes
+              FT = 5,                 # tiempo de seguimiento en años
+              n = 300,                # tamaño total de la muestra
+              power = NA,             # queremos calcular el poder
+              r = 1,                  # relación 1:1 entre grupos
+              design = 1, 
+              sided.test = 2, 
+              nfractional = FALSE, 
+              conf.level = 0.95)
+```
+
+Con una muestra de 300 participantes, tendríamos solo un 12.5% de probabilidad de detectar correctamente una diferencia real en el riesgo de TEA entre hijos de madres con y sin diabetes. En otras palabras, el estudio tendría un poder muy bajo para rechazar la hipótesis nula, lo que implica un alto riesgo de error tipo II (no detectar un efecto que sí existe).

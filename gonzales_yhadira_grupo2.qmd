@@ -1,0 +1,235 @@
+---
+title: "Tipos de objetos, funciones, paquetes e importación de datos"
+author: "gonzalesyhadira"
+format: html
+editor: visual
+---
+
+# Funciones en R
+
+```{r}
+# 1. Leer el archivo CSV
+df <- read.csv("autismo.csv", stringsAsFactors = FALSE)
+
+# 2. Función para contar frecuencias
+contar_variable <- function(data, variable) {
+  var <- deparse(substitute(variable))
+  tabla <- table(data[[var]])
+  resultado <- as.data.frame(tabla)
+  colnames(resultado) <- c(var, "Frecuencia")
+  return(resultado)
+}
+```
+
+```{r}
+# 3. Otro ejemplo: contar por Diagnóstico de Autismo
+contar_variable(df, Diagnostico_autismo)
+```
+
+```{r}
+# 4. Otro ejemplo: contar por Género
+contar_variable(df, Genero)
+```
+
+# Tipos de datos en R
+
+Los objetos en R pueden contener varios tipos de valores, incluyendo números (1, 2, 3) o caracteres ("A", "B", "AB"). Los objetos pueden tambien ser tablas o una simple lista de números. La función `class()` identifica el tipo de objeto con el que estemos lidiando. En el siguiente código, creamos el objeto `a` y examinamos a que tipo pertenece.
+
+```{r}
+edad_paciente = 11
+class(a)
+```
+
+## El tipo de objeto llamado `dataframe`
+
+Los objetos son de varios tipos, pero será infrecuente que usemos objetos que contienen uno o unos pocos valores. En cambio, será común que lidiemos con objetos cuya información esten organizados como las tablas que se pueden crear en Excel. Este tipo de objeto son llamados `dataframe`. Los dataframes pueden incluir muchas columnas y filas, organizados como se ve en la imagen. Los dataframe son muy útiles porque permite combinar variables (en forma de columnas) para muchas casos u observaciones (filas).
+
+El código de abajo, la cual crea el objeto `mi_data` de tipo `dataframe`, es un poco más complicado en comparación a lo que haz visto hasta el momento. Pero no te preocupes, solo tienes que correrlo. Más adelante, podrás entender completamente lo que esta sucediendo.
+
+```{r}
+# 1. Leer el archivo CSV completo
+df <- read.csv("autismo.csv", stringsAsFactors = FALSE)
+
+# 2. Crear un nuevo data frame solo con Edad, Genero y Etnicidad
+df_reducido <- data.frame(
+  Edad = df$Edad,
+  Genero = df$Genero,
+  Etnicidad = df$Etnicidad
+)
+
+# 3. Ver las primeras filas
+head(df_reducido)
+```
+
+Examinemos que el objeto `mi_data` que acabamos de crear es, en realidad, un dataframe.
+
+```{r}
+class(data_autismo)
+```
+
+## La estructura de un objeto
+
+La función `str()` permite saber más de un objeto. Por ejemplo, el número de observaciones, las variables, y el tipos de datos por variable.
+
+```{r}
+str(data_autismo)
+```
+
+Luego de usar la función, sabemos que el dataframe `mi_data` tiene 4 variables y 10 observaciones. También, conocemos ahora los nombres de las variables (`edad`, `sexo`, `tipo_sangre`, `hb_glicosilada`)
+
+## El operador de extracción `$`
+
+Para analizar datos, tendremos que acceder a las variables de un dataframe, las columnas. Podemos usar el operador de extracción `$` para extraer la variable `edad` dataframe `mi_data`, de la siguiente manera.
+
+```{r}
+data_autismo$edad
+```
+
+La función `names()` puede también mostrarnos los nombres de las variables (columnas)
+
+```{r}
+names(data_autismo)
+```
+
+## 2.4 Vectores
+
+Al ejecutar `mi_edad$edad`, R nos muestra varios números. Este tipo de objetos son llamados vectores. Los vectores pueden tener 1 o más valores. El número 8 es tecnicamente un vector de longitud 1. Puedes saber la longitud de un vector usando la función `lenght()`
+
+```{r}
+length(data_autismo$edad)
+```
+
+### 2.4.1 *numeric* (numérico)
+
+La variable `edad` (incluído en el dataframe `mi_data`) es un vector numérico, dado que incluye solo números.
+
+```{r}
+class(data_autismo$edad)
+```
+
+Para que un vector sea *numeric*, este solo debe incluir valores numéricos.
+
+### *list* (lista)
+
+EL dataframe `mi_data` es un tipo especial de *lista*. En los objetos de esta clase podemos podemos varios tipos de datos. Para crear una *lista*, usamos la función `list()`
+
+```{r}
+paciente_autismo <- list(
+  nombre = "Luis Ramírez",
+  codigo_paciente = "A2025",
+  puntuaciones = c(1, 1, 0, 1, 1, 1, 1, 0, 1, 0),
+  edad = "6",
+  genero = "Masculino",
+  etnicidad = "Hispano",
+  ictericia_al_nacer = "No",
+  diagnostico_autismo = "Sí",
+  estado_final = "Necesita seguimiento"
+)
+```
+
+```{r}
+class(mi_lista)
+```
+
+Esta lista incluye objetos con varios tipos de datos
+
+```{r}
+mi_lista
+```
+
+### Creando un vector
+
+```{r}
+nombres_pacientes <- c("Luis", "Camila", "Jorge", "Sofía", "Mateo")
+```
+
+```{r}
+edades_pacientes <- c(6, 5, 7, 4, 8)
+```
+
+```{r}
+genero_pacientes <- c("Masculino", "Femenino", "Masculino", "Femenino", "Masculino")
+
+```
+
+```{r}
+diagnostico_autismo <- c("Sí", "No", "Sí", "No", "Sí")
+```
+
+# Paquetes en R
+
+## Instalar y cargar paquetes en R
+
+Para instalar paquetes en R, usa la función `install.packages()`. El nombre del paquete debe especificarse entre comillas. Por ejemplo, el código abajo instalará el paquete `survival` .
+
+```{r}
+install.packages("survival")
+```
+
+Después de ejecutar esta línea de código, la consola (inferior izquierda de tu pantalla) mostrará actividad. Una vez que reaparezca el símbolo `>`, la instalación habrá finalizado.
+
+Cuando se instala un paquete en R, toda la información se almacenará en un directorio de tu computadora. Este directorio se conoce como librería. Por lo tanto, luego de instalar el paquete, será necesario cargarlo. Para ello, utilizamos `library()`:
+
+```{r}
+library(survival)
+```
+
+> Recuerda que la instalación solo se realiza una vez, pero cada vez que abramos RStudio será necesario cargar el paquete si deseamos usar sus funciones.
+
+# Importando datos en R
+
+**IMPORTANCIA DE RIO Y HERE**
+
+En el desarrollo de un proyecto en R, especialmente al trabajar con bases de datos como la de autismo, el uso de ciertos paquetes puede facilitar mucho el proceso. Uno de ellos es **rio**, que permite leer y guardar archivos de diferentes formatos (como CSV o Excel) de forma práctica. Gracias a este paquete, no es necesario recordar comandos distintos para cada tipo de archivo, lo que optimiza el tiempo y disminuye errores al cargar la información.
+
+Otro paquete clave es **here**, el cual ayuda a ubicar correctamente los archivos dentro de la estructura del proyecto, sin depender de rutas absolutas. Esto es especialmente útil cuando se trabaja en diferentes computadoras o se comparte el proyecto con otras personas, ya que garantiza que el acceso a los datos sea consistente y ordenado.
+
+```{r}
+install.packages("here")
+install.packages("rio") 
+```
+
+**IMPORTANCIA DE DATA.TABLE Y DPLYR**
+
+En RStudio, los paquetes **data.table y dplyr** son muy útiles porque hacen que trabajar con datos sea más rápido y organizado. `data.table` permite manejar grandes cantidades de información sin que el programa se vuelva lento, mientras que **dplyr** facilita transformar los datos con un lenguaje claro y fácil de entender. Usar estos paquetes ayuda a hacer análisis más ordenados, rápidos y fáciles de repetir.
+
+```{r}
+install.packages("data.table")
+install.packages("dplyr") 
+```
+
+```{r}
+library(here)
+library(rio)
+```
+
+```{r}
+library(data.table)
+library(dplyr)
+```
+
+Para importar el archivo que se encuentra en un carpeta *data* de un proyecto, necesitamos el siguiente código.
+
+```{r}
+data_autismo = import(here("autismo.csv"))
+```
+
+# Exportando datos
+
+Será común que necesitemos exportar dataframes que hayamos modificado en R. Aunque R permite exportar datos en varios formatos, una manera adecuada es la de usar el formato csv (comma separated values). La función `write_excel_csv()` del paquete `readr` exporta dataframes a archivos con la extensión csv que son reconocidos por Excel.
+
+```{r}
+install.packages("readr")
+```
+
+```{r}
+library(readr)
+```
+
+En la función `write_excel_csv()` el primer argumento es el nombre del dataframe que deseamos exportar, el segundo es el nombre que deseamos asignarle al dataset exportado. Recuerda incluir la extensión del archivo.
+
+```{r}
+write_excel_csv(data_autismo, "autismo2.csv")
+```
+
+El archivo se guardará en la carpeta del proyecto.

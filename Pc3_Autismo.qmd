@@ -1,0 +1,235 @@
+---
+title: "PC3"
+author: "Yhadira Gonzales Cervera, Lucero Elguera Allende, Siguas Aliaga Kaherine, Zea Camacho Sharely, Zevallos Ramos Pedro Alejandro"
+format: html
+editor: visual
+---
+
+## 
+
+```{r}
+install.packages("broom")
+install.packages("survival")
+install.packages("survminer")
+install.packages("ggsurvfit")
+
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(survival)
+library(survminer)
+library(gtsummary)
+library(broom)
+library(here)
+library(rio)
+library(ggsurvfit)
+library(car)
+library(ggplot2)
+library(flextable)
+library(officer)
+library(dplyr)
+
+```
+
+```{r}
+autismo <- Import(here("data", "autismo.csv"))
+```
+
+```{r}
+autismo |> 
+  select(Edad,Diagnostico_autismo,Genero) |> 
+  summary()
+
+```
+
+```{r}
+autismo$evento <- ifelse(autismo$Diagnostico_ASD == "Sí", 1, 0)
+
+```
+
+```{r}
+surv_autismo <- Surv(autismo$Resultado, autismo$evento)
+
+```
+
+```{r}
+km <- survfit(Surv(Resultado, evento) ~ 1, data = autismo)
+
+
+```
+
+```{r}
+str(km)
+
+```
+
+```{r}
+autismo$evento <- ifelse(autismo$Diagnostico_ASD == "Sí", 1, 0)
+
+```
+
+```{r}
+survfit2(Surv(Resultado, evento) ~ 1, data = autismo) |>
+  ggsurvfit() +
+  labs(
+    title = "Curva de supervivencia - Datos de Autismo",
+    x = "Puntaje total del test (Resultado)",
+    y = "Probabilidad de no diagnóstico de autismo"
+  ) +
+  add_censor_mark()
+```
+
+```{r}
+survfit2(Surv(Resultado, evento) ~ 1, data = autismo) |>
+  ggsurvfit() +
+  labs(
+    title = "Curva de supervivencia (Kaplan-Meier) con intervalos y tabla de riesgo",
+    x = "Puntaje total del test (Resultado)",
+    y = "Probabilidad de no diagnóstico de autismo"
+  ) + 
+  add_censor_mark() +           
+  add_confidence_interval() +    
+  add_risktable()    
+```
+
+**Interpretación**
+
+La curva de Kaplan–Meier aplicada a los datos de autismo permite visualizar cómo varía la probabilidad de no diagnóstico conforme aumentan los puntajes del test.\
+
+Si la curva desciende a medida que crece el “Resultado”, se interpreta que los puntajes más altos se asocian con mayor probabilidad de autismo, mientras que los puntajes bajos reflejan alta supervivencia (no diagnóstico).
+
+```{r}
+summary(survfit(Surv(Resultado, evento) ~ 1, data = autismo), times = 70)
+
+```
+
+```{r}
+survfit2(Surv(Resultado, evento) ~ 1, data = autismo) |>
+  ggsurvfit() +
+  labs(
+    x = "Puntaje total del test (Resultado)",
+    y = "Probabilidad de no diagnóstico de autismo"
+  ) + 
+  add_confidence_interval() +   # Intervalos de confianza
+  add_risktable() +             # Tabla de riesgo
+  add_quantile(x_value = 70, linewidth = .7)  # Marca el punto en x = 70
+```
+
+```{r}
+survfit(Surv(Resultado, evento) ~ 1, data = autismo)
+
+```
+
+```{r}
+survfit2(Surv(Resultado, evento) ~ 1, data = autismo) |>
+  ggsurvfit() +
+  labs(
+    x = "Puntaje total del test (Resultado)",
+    y = "Probabilidad de no diagnóstico de autismo"
+  ) + 
+  add_confidence_interval() +
+  add_risktable() +
+  add_quantile(y_value = 0.5, linewidth = .7)  # Marca la mediana
+
+```
+
+La línea horizontal en `y = 0.5` muestra el punto donde la mitad de los participantes ya fueron diagnosticados.\
+
+Ese punto sobre el eje X representa el puntaje mediano asociado al diagnóstico.
+
+```{r}
+theme_gtsummary_language(language = "es")
+```
+
+```{r}
+survfit(Surv(Resultado, evento) ~ Pais_residencia, data = autismo) %>% 
+  tbl_survfit(
+    times = 5,  # puedes ajustar el valor según tu escala de "Resultado"
+    label_header = "**Probabilidad de no diagnóstico de autismo (IC 95%) según país**"
+  )
+
+```
+
+```{r}
+survfit(Surv(Resultado, evento) ~ Pais_residencia, data = autismo) |>  
+  tbl_survfit(
+    probs = 0.5,
+    label_header = "**Mediana del puntaje hasta diagnóstico (IC 95%) según país**"
+  )
+```
+
+```{r}
+survdiff(Surv(Resultado, evento) ~ Pais_residencia, data = autismo)
+
+```
+
+```{r}
+survfit2(Surv(Resultado, evento) ~ Pais_residencia, data = autismo) |>
+  ggsurvfit() +
+  labs(
+    title = "Curvas de Supervivencia según País de Residencia",
+    x = "Puntaje total del test (Resultado)",
+    y = "Probabilidad de no diagnóstico de autismo"
+  ) +
+  add_confidence_interval() +
+  add_risktable() +
+  add_pvalue(caption = "Prueba de Log-rank {p.value}")
+```
+
+```{r}
+autismo <- autismo %>%
+  mutate(
+    evento = ifelse(Diagnostico_autismo == "Sí", 1, 0),  # Evento de interés
+    Resultado = as.numeric(Resultado)
+  ) %>%
+  filter(!is.na(Resultado) & !is.na(evento))
+```
+
+```{r}
+summary(modelo)
+
+```
+
+```{r}
+autismo <- autismo %>%
+  mutate(
+    evento = ifelse(Diagnostico_autismo == "Sí", 1, 0),
+    Resultado = as.numeric(Resultado)
+  )
+```
+
+```{r}
+tabla_cox_autismo <- autismo |>
+  tbl_uvregression(
+    include = c(Genero, Pais_residencia),   # Quitar Descripcion_edad
+    y = Surv(Resultado, evento),
+    method = coxph,
+    exponentiate = TRUE,
+    conf.int = TRUE,
+    hide_n = TRUE,
+    add_estimate_to_reference_rows = FALSE,
+    pvalue_fun = ~ style_pvalue(.x, digits = 3),
+    estimate_fun = ~ style_number(.x, digits = 2),
+    label = list(
+      Genero ~ "Género",
+      Pais_residencia ~ "País de residencia"
+    )
+  ) |>
+  bold_p(t = 0.05) |>
+  modify_header(estimate = "**HR no ajustado**", p.value = "**Valor P**")
+```
+
+```{r}
+tabla_cox_autismo
+  
+```
+
+**Interpretación general:**
+
+-   La edad tiene una asociación significativa con el evento (HR\>1, p\<0.05)
+
+-   El género y el país no muestran asociación significativa (p\>0.05).
+
+-    La edad es la variable que más influye en el riesgo del evento en este modelo univariable.

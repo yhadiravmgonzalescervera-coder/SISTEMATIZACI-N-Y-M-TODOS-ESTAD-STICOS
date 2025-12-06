@@ -1,0 +1,95 @@
+---
+title: "Bondad de ajuste"
+Nombre: Gonzales Cervera Yhadira 
+format: html
+---
+
+```{r}
+library(rio)
+library(here)
+
+```
+
+```{r}
+autismo <- import(here("data", "autismo.csv"))
+```
+
+Un estudio previo realizado en Perú reportó una prevalencia de trastorno del espectro autista (TEA) del **1,5 %** (DOI: https://doi.org/10.17843/rpmesp.2024.411.13285).
+
+En este caso, la prevalencia del estudio previo representa el valor **esperado**, mientras que la prevalencia observada en nuestro conjunto de datos representa el valor **observado**.
+
+Uno de los objetivos de nuestro análisis es evaluar si la proporción observada de TEA difiere significativamente de la proporción esperada. Para ello, utilizamos la prueba de bondad de ajuste de Chi-cuadrado.
+
+Las hipótesis de esta prueba son las siguientes:
+
+-    **Hipótesis nula (H₀):** No existe una diferencia significativa entre la proporción observada y la esperada.
+
+-   **Hipótesis alternativa (H₁):** Existe una diferencia significativa entre la proporción observada y la esperada.
+
+En R, esta prueba se realiza mediante la función `chisq.test()`, a la cual se deben proporcionar los conteos observados y las proporciones esperadas para llevar a cabo la comparación.
+
+```{r}
+chisq.test(x = c(10, 490), p = c(0.015, 0.985))
+```
+
+Interpretación:
+
+El valor de p (0.3577) es mayor a 0.05, por lo que no se rechaza la hipótesis nula.\
+
+Esto indica que la proporción observada de autismo en tu muestra (2 %) **no difiere significativamente** de la proporción esperada (1,5 %) reportada en estudios previos.
+
+(DOI: 10.17843/rpmesp.2024.411.13285).
+
+Dado que el valor de p es mayor a 0.05, podemos concluir que las proporciones observadas no son significativamente diferentes de las proporciones esperadas.
+
+En este caso, la prevalencia observada de trastorno del espectro autista (TEA) en nuestro conjunto de datos no difiere significativamente del valor esperado del 1,5 % reportado en el estudio previo realizado en Perú.
+
+### Interpretación de cada elemento
+
+#### 1. Chi-squared test for given probabilities
+
+Esto indica qué tipo de prueba se realizó:\
+Es una prueba de bondad de ajuste Chi-cuadrado, usada para comparar las proporciones observadas (c(10, 490)) con las proporciones esperadas (c(0.015, 0.985)).
+
+“¿La frecuencia observada de casos con autismo en tu muestra (10 de 500) es diferente de lo que se esperaría si la prevalencia real fuera del 1,5 %?”
+
+#### 2. data: c(10, 490)
+
+Esto muestra los datos observados que tú ingresaste:
+
+10 → número de personas con diagnóstico de autismo.
+
+490 → número de personas sin diagnóstico de autismo.
+
+#### 3. X-squared = 0.84602
+
+Este es el estadístico de Chi-cuadrado (χ²).\
+Mide cuánto se desvían los valores observados de los esperados.
+
+Cuanto más grande sea este valor, mayor es la diferencia entre lo observado y lo esperado.\
+En tu caso, 0.846 es pequeño → las diferencias son mínimas.
+
+#### 4. df = 1
+
+Esto significa grados de libertad (*degrees of freedom*).\
+En la prueba de bondad de ajuste, se calcula como:
+
+![](images/clipboard-2822575258.png){width="262"}
+
+Tienes 2 categorías (con TEA / sin TEA), por lo tanto:
+
+df=2−1=1
+
+#### 5. p-value = 0.3577
+
+Este es el valor de p, que nos dice si la diferencia entre las proporciones observadas y las esperadas es estadísticamente significativa.
+
+-    Si p \< 0.05 → diferencia significativa (las proporciones *sí* difieren).
+
+-    Si p \> 0.05 → diferencia no significativa (las proporciones *no* difieren).
+
+En tu caso:
+
+p=0.3577\>0.05p
+
+No hay diferencia significativa entre lo observado y lo esperado.

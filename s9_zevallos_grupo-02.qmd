@@ -1,0 +1,475 @@
+---
+title: "s2-grupo02-pc"
+author: "zevallos"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+
+```{r}
+install.packages("car")
+```
+
+```{r}
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{library(tidyverse)}
+library(here)
+library(rio)
+library(gtsummary)
+library(car)
+```
+
+```{r}
+circun_glucosa <- import(here("data", "s09_circunf_glucosa.csv"))
+
+```
+
+```{r}
+head(circun_glucosa)
+str(circun_glucosa)
+```
+
+Regresión simple
+
+```{r}
+modelo_continuo <- lm(glucosa_mg_dL ~ circunf_cintura_cm, data = circun_glucosa)
+```
+
+```{r}
+summary(modelo_continuo)
+```
+
+```{r}
+summary(modelo_continuo)$coef
+
+```
+
+ecuación del modelo
+
+```{r}
+Glucosa (mg/dL) = 59.474 + 0.500 × Circunferencia de cintura (cm) + ε
+
+```
+
+## Modelo con predictor categórico: Glucosa - Sexo
+
+```{r}
+modelo_categorico <- lm(glucosa_mg_dL ~ sexo, data = circun_glucosa)
+
+```
+
+```{r}
+summary(modelo_categorico)
+
+```
+
+```{r}
+summary(modelo_categorico)$coef
+
+```
+
+2ecuación del modelo
+
+```{r}
+Glucosa = β₀ + β₁ × I(sexo == "Masculino") + ε
+
+```
+
+AJUSTE Y GRÁFICO DE MODELO DE REGRESIÓN LINEAL SIMPLE
+
+```{r}
+plot(glucosa_mg_dL ~ circunf_cintura_cm, 
+     data = circun_glucosa,
+     col = "gray50",
+     pch = 20,
+     ylab = "Glucosa (mg/dL)",
+     xlab = "Circunferencia de cintura (cm)",
+     main = "Regresión Lineal: Glucosa vs Circunferencia de cintura",
+     font.lab = 2, 
+     font.axis = 2)
+```
+
+```{r}
+abline(modelo_continuo, lwd = 2.5, col = "darkred")
+```
+
+```{r}
+predict_data <- data.frame(circunf_cintura_cm = seq(min(circun_glucosa$circunf_cintura_cm, na.rm = TRUE),
+                                                     max(circun_glucosa$circunf_cintura_cm, na.rm = TRUE),
+                                                     length.out = 100))
+predictions <- predict(modelo_continuo, newdata = predict_data, 
+                       se.fit = TRUE, interval = "confidence", level = 0.95)
+lines(predict_data$circunf_cintura_cm, predictions$fit[, 2], 
+      lty = 2, col = "blue", lwd = 1.5)
+lines(predict_data$circunf_cintura_cm, predictions$fit[, 3], 
+      lty = 2, col = "blue", lwd = 1.5)
+```
+
+grafico con ggplot
+
+```{r}
+circun_glucosa |>
+  ggplot(aes(x = circunf_cintura_cm, y = glucosa_mg_dL)) +
+  geom_point(alpha = 0.5, color = "steelblue", size = 2) +
+  geom_smooth(method = "lm", se = TRUE, color = "darkred", 
+              fill = "lightcoral", alpha = 0.2) +
+  labs(
+    title = "Regresión Lineal Simple: Glucosa vs Circunferencia de Cintura",
+    x = "Circunferencia de cintura (cm)",
+    y = "Glucosa en ayunas (mg/dL)",
+    subtitle = "Con intervalo de confianza 95%"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 12),
+    axis.title = element_text(face = "bold")
+  )
+```
+
+grafico con predictor categórico
+
+```{r}
+circun_glucosa |>
+  filter(!is.na(sexo)) |>
+  ggplot(aes(x = sexo, y = glucosa_mg_dL, fill = sexo)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.2, alpha = 0.3, size = 2) +
+  labs(
+    title = "Distribución de Glucosa por Sexo",
+    x = "Sexo",
+    y = "Glucosa en ayunas (mg/dL)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## ANALIZAR LOS COEFICIENTES ESTIMADOS - PREDICTOR CONTINUO
+
+ 
+
+```{r}
+coef_continuo <- summary(modelo_continuo)$coef
+
+```
+
+```{r}
+print(coef_continuo)
+```
+
+extraer
+
+```{r}
+intercepto <- coef_continuo[1, 1]
+pendiente <- coef_continuo[2, 1]
+ee_pendiente <- coef_continuo[2, 2]
+estadistico_t <- coef_continuo[2, 3]
+valor_p <- coef_continuo[2, 4]
+```
+
+ver resultados individuales
+
+```{r}
+cat("Intercepto (β₀):", intercepto, "\n")
+cat("Pendiente (β₁):", pendiente, "\n")
+cat("Error estándar de β₁:", ee_pendiente, "\n")
+cat("Estadístico t:", estadistico_t, "\n")
+cat("Valor p:", valor_p, "\n")
+```
+
+intervalos de confianza
+
+```{r}
+nivel_confianza <- 0.95
+alfa <- 1 - nivel_confianza
+t_critico <- qt(1 - alfa/2, df = modelo_continuo$df.residual)
+ic_inferior <- pendiente - t_critico * ee_pendiente
+ic_superior <- pendiente + t_critico * ee_pendiente
+```
+
+```{r}
+nivel_confianza <- 0.95
+alfa <- 1 - nivel_confianza
+t_critico <- qt(1 - alfa/2, df = modelo_continuo$df.residual)
+ic_inferior <- pendiente - t_critico * ee_pendiente
+ic_superior <- pendiente + t_critico * ee_pendiente
+
+cat("\nIntervalo de confianza 95% para β₁:\n")
+cat("[", ic_inferior, ",", ic_superior, "]\n")
+```
+
+bondad de ajuste
+
+```{r}
+r_cuadrado <- summary(modelo_continuo)$r.squared
+r_cuadrado_ajustado <- summary(modelo_continuo)$adj.r.squared
+
+cat("R²:", r_cuadrado, "\n")
+cat("R² ajustado:", r_cuadrado_ajustado, "\n")
+```
+
+```{r}
+error_estandar <- summary(modelo_continuo)$sigma
+cat("Error estándar residual:", error_estandar, "\n")
+```
+
+```{r}
+estadistico_f <- summary(modelo_continuo)$fstatistic
+cat("Estadístico F:", estadistico_f, "con", estadistico_f, 
+    "y", estadistico_f, "grados de libertad\n")
+```
+
+tabla de regresión con formato profesional
+
+```{r}
+theme_gtsummary_language("es")
+
+tabla_regresion_continua <- modelo_continuo |>
+  tbl_regression(
+    intercept = TRUE,
+    estimate_fun = function(x) style_sigfig(x, digits = 4),
+    pvalue_fun = function(x) style_pvalue(x, digits = 3),
+    label = list(circunf_cintura_cm ~ "Circunferencia de cintura (cm)")
+  ) |>
+  modify_caption("Regresión de glucosa en ayunas (mg/dL) por circunferencia de cintura (cm)")
+
+tabla_regresion_continua
+```
+
+```{r}
+tabla_regresion_continua |>
+  as_flex_table() |>
+  flextable::save_as_docx(path = "tabla_regresion_continua.docx")
+
+```
+
+## EVALUAR LOS COEFICIENTES ESTIMADOS - PREDICTOR CATEGÓRICO
+
+## Análisis de coeficientes con predictor categórico
+
+```{r}
+modelo_sexo <- lm(glucosa_mg_dL ~ sexo, data = circun_glucosa)
+
+```
+
+```{r}
+summary(modelo_sexo)
+```
+
+```{r}
+coef_categorico <- summary(modelo_sexo)$coef
+print(coef_categorico)
+```
+
+**Interpretación de coeficientes categóricos:**
+
+-   **Intercepto (β₀):** Media de glucosa para la categoría de referencia (Femenino).
+
+-   **sexoMasculino (β₁):** Diferencia media de glucosa entre Masculino y Femenino.
+
+    -   Si β₁ \> 0: Los hombres tienen mayor glucosa promedio.
+
+    -   Si β₁ \< 0: Las mujeres tienen mayor glucosa promedio.
+
+    -   Si p-value \< 0.05: La diferencia es estadísticamente significativa.
+
+## Estadísticas descriptivas por grupo
+
+```{r}
+circun_glucosa |>
+  group_by(sexo) |>
+  summarise(
+    n = n(),
+    media = mean(glucosa_mg_dL, na.rm = TRUE),
+    desv_est = sd(glucosa_mg_dL, na.rm = TRUE),
+    minimo = min(glucosa_mg_dL, na.rm = TRUE),
+    maximo = max(glucosa_mg_dL, na.rm = TRUE),
+    .groups = 'drop'
+  )
+```
+
+## Pruebas preliminares para supuestos
+
+```{r}
+circun_glucosa |>
+  filter(sexo == "Femenino") |>
+  pull(glucosa_mg_dL) |>
+  shapiro.test()
+
+circun_glucosa |>
+  filter(sexo == "Masculino") |>
+  pull(glucosa_mg_dL) |>
+  shapiro.test()
+
+# Prueba de homogeneidad de varianzas (Levene)
+leveneTest(glucosa_mg_dL ~ sexo, data = circun_glucosa)
+
+# Prueba de igualdad de varianzas (F)
+var.test(glucosa_mg_dL ~ sexo, data = circun_glucosa)
+
+```
+
+## Comparación de medias (Prueba t)
+
+```{r}
+t.test(glucosa_mg_dL ~ sexo, 
+       data = circun_glucosa, 
+       var.equal = TRUE)
+```
+
+## Tabla de regresión categórica
+
+```{r}
+tabla_regresion_categorica <- modelo_sexo |>
+  tbl_regression(
+    intercept = TRUE,
+    estimate_fun = function(x) style_sigfig(x, digits = 4),
+    pvalue_fun = function(x) style_pvalue(x, digits = 3),
+    label = list(sexo ~ "Sexo")
+  ) |>
+  modify_caption("Regresión de glucosa en ayunas (mg/dL) por sexo")
+
+tabla_regresion_categorica
+
+# Exportar tabla
+tabla_regresion_categorica |>
+  as_flex_table() |>
+  flextable::save_as_docx(path = "tabla_regresion_categorica.docx")
+
+```
+
+## DIAGNÓSTICO DEL MODELO
+
+## Gráficos de diagnóstico
+
+```{r}
+par(mfrow = c(2, 2))
+plot(modelo_continuo)
+par(mfrow = c(1, 1))
+```
+
+```{r}
+# Gráficos de diagnóstico automáticos
+par(mfrow = c(2, 2))
+plot(modelo_continuo)
+par(mfrow = c(1, 1))
+
+# Interpretación:
+# 1. Residuals vs Fitted: verifica linealidad y homocedasticidad
+# 2. Q-Q Plot: verifica normalidad de residuos
+# 3. Scale-Location: verifica homocedasticidad
+# 4. Residuals vs Leverage: identifica valores influyentes
+```
+
+## Pruebas de supuestos
+
+```{r}
+# Prueba de normalidad de residuos (Shapiro-Wilk)
+shapiro.test(residuals(modelo_continuo))
+
+# Prueba de homocedasticidad (Breusch-Pagan)
+# Requiere el paquete lmtest
+library(lmtest)
+bptest(modelo_continuo)
+
+# Prueba de multicolinealidad (para futuros modelos múltiples)
+# VIF (Variance Inflation Factor)
+```
+
+## Predicciones
+
+```{r}
+# Hacer predicciones para nuevos valores
+nuevos_datos <- data.frame(circunf_cintura_cm = c(80, 100, 120, 140))
+
+# Predicciones puntuales
+predicciones <- predict(modelo_continuo, newdata = nuevos_datos)
+
+# Predicciones con intervalo de confianza
+pred_ic <- predict(modelo_continuo, newdata = nuevos_datos, 
+                   interval = "confidence", level = 0.95)
+
+# Predicciones con intervalo de predicción
+pred_ip <- predict(modelo_continuo, newdata = nuevos_datos, 
+                   interval = "prediction", level = 0.95)
+
+# Ver resultados
+cbind(nuevos_datos, 
+      prediccion = predicciones,
+      ic_inferior = pred_ic[, 2],
+      ic_superior = pred_ic[, 3])
+```
+
+## REPORTAR RESULTADOS
+
+## Formato de reporte científico
+
+```{r}
+# "Se empleó un modelo de regresión lineal simple para evaluar la asociación 
+# entre el nivel de glucosa en ayunas (mg/dL) y la circunferencia de cintura (cm) 
+# usando datos de 965 adultos. El 8.71% de la variación en el nivel de glucosa 
+# en ayunas fue explicada por la circunferencia de cintura (R² = 0.0871). 
+# Se encontró una asociación positiva significativa entre la glucosa en ayunas 
+# y la circunferencia de cintura (B = 0.499; p < .001). En promedio, 
+# por cada diferencia de 1 cm en la circunferencia de cintura, los adultos 
+# difieren en el promedio de glucosa en ayunas en 0.499 mg/dL."
+```
+
+## Tabla final
+
+```{r}
+# Crear tabla resumen completo
+resumen_regresion <- data.frame(
+  Variable = c("Intercepto", "Circunferencia de cintura"),
+  Coeficiente = c(round(coef_continuo[1, 1], 3), round(coef_continuo[2, 1], 3)),
+  EE = c(round(coef_continuo[1, 2], 3), round(coef_continuo[2, 2], 3)),
+  Estadístico_t = c(round(coef_continuo[1, 3], 3), round(coef_continuo[2, 3], 3)),
+  Valor_p = c(round(coef_continuo[1, 4], 4), round(coef_continuo[2, 4], 4))
+)
+
+print(resumen_regresion)
+
+# Tabla de bondad de ajuste
+bondad_ajuste <- data.frame(
+  Métrica = c("R²", "R² Ajustado", "Error Estándar Residual", "F-estadístico", "p-value (F)"),
+  Valor = c(
+    round(summary(modelo_continuo)$r.squared, 4),
+    round(summary(modelo_continuo)$adj.r.squared, 4),
+    round(summary(modelo_continuo)$sigma, 3),
+    round(summary(modelo_continuo)$fstatistic, 3),
+    round(1 - pf(summary(modelo_continuo)$fstatistic, 
+                  summary(modelo_continuo)$fstatistic,
+                  summary(modelo_continuo)$fstatistic), 4)
+  )
+)
+
+print(bondad_ajuste)
+```

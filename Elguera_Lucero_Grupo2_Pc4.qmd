@@ -1,0 +1,270 @@
+---
+title: "PC4"
+author: "Lucero Alejandra Elguera Allende, Pedro Alejandro Zevallos Ramos, Yhadira Gonzales Cervera, Katherine Alessandra Siguas Aliaga, Sharely Zea Camacho"
+format: html
+editor: visual
+---
+
+```{r}
+install.packages("factoextra")
+install.packages("cluster")
+```
+
+You can add options to executable code like this
+
+```{r}
+library(factoextra)
+library(cluster)
+library(here)
+library(rio)
+library(tidyverse)
+```
+
+**Importando los datos**
+
+```{r}
+autismo <- import(here("data", "autismo.csv"))
+```
+
+**Solo datos numéricos (adaptado a tu data)**
+
+Para el análisis de agrupamiento jerárquico en este estudio utilizaremos únicamente las **variables numéricas** del dataset de autismo. Aunque es posible incluir variables categóricas en técnicas de clasificación, este procedimiento no será abordado aquí.\
+Por esta razón, se eliminan las variables categóricas tales como **Género, Etnicidad, País de residencia, Uso previo de la aplicación, Descripción de edad, Quién completa la prueba y Diagnóstico de ASD**.
+
+La columna **`ID`** será utilizada como identificador de los participantes en el análisis.
+
+```{r}
+sapply(autismo_data, class)
+```
+
+```{r}
+autismo_data <- autismo |>
+  select(ID, starts_with("Puntuacion"),Resultado) |>
+  mutate(Resultado = as.numeric(Resultado)) |>
+  column_to_rownames("ID")
+```
+
+### **Importancia de estandarizar (versión adaptada a tu dataset)**
+
+Antes de hacer el análisis de agrupamiento jerárquico, es clave estandarizar las variables numéricas. En tu base de datos, las puntuaciones del test (P1–P10) y el puntaje total (`Resultado`) no están en la misma escala. Si no se estandarizan, las variables con valores más altos —como el `Resultado`— pueden dominar el cálculo de distancias y distorsionar los grupos.
+
+Estandarizar con `scale()` convierte todas las variables a una escala común (media 0 y desviación estándar 1), haciendo que todas tengan el mismo peso al calcular distancias entre participantes. Esto evita que una variable “mande” sobre las demás y permite obtener clústeres más representativos y comparables.
+
+```{r}
+autismo_escalado <- scale(autismo_data)
+
+```
+
+Un vistazo a los datos antes del escalamiento:
+
+```{r}
+head(autismo_data)
+
+```
+
+**Cálculo de distancias\
+** Para avanzar en el análisis de agrupamiento jerárquico es necesario cuantificar qué tan similares o diferentes son los participantes entre sí. Esta “similitud” se traduce matemáticamente en una distancia: cuanto más cerca estén dos individuos en términos de sus variables (en este caso, las puntuaciones del test), más similares serán.
+
+En este proceso, se calcula la distancia entre cada par posible de participantes. Por ejemplo, si tuviéramos a los sujetos A, B y C, las distancias se obtendrían para A vs B, A vs C y B vs C. El conjunto completo de estas distancias conforma la llamada matriz de distancias o matriz de disimilitud.
+
+En R, utilizamos la función `dist()` para obtener esta matriz a partir del conjunto de datos numéricos previamente estandarizados.
+
+```{r}
+dist_autismo <- dist(autismo_escalado, method = "euclidean")
+
+```
+
+**Visualizando las distancias euclidianas con un mapa de calor**
+
+Una forma útil de explorar si existen patrones de agrupamiento en el dataset es mediante mapas de calor (heatmaps). Estos gráficos permiten observar qué participantes presentan valores similares en las variables estudiadas, ya que los pares con menor distancia se muestran en colores más cercanos.
+
+En R, podemos generar un mapa de calor utilizando la función `fviz_dist()` del paquete factoextra, la cual crea una visualización clara y directa de la matriz de distancias entre los participantes del estudio.
+
+```{r}
+fviz_dist(dist_autismo)
+
+```
+
+# **Interpretación del mapa de calor — Adaptado a tu dataset**
+
+En este gráfico, el color representa el nivel de disimilaridad entre dos participantes.
+
+-   Un color rojo intenso indica una distancia cercana a **0**, es decir, participantes muy similares.
+
+-   La diagonal del gráfico corresponde a la comparación de cada participante consigo mismo.
+
+-   Cuando varios participantes forman un grupo de colores similares y adyacentes, esto sugiere que podrían pertenecer al mismo clúster.
+
+-   En tu caso, observar zonas de colores semejantes indica que algunos niños comparten patrones similares en sus puntajes del test (P1–P10 y Resultado).
+
+**Método de agrupamiento (linkage) — Adaptado a tu dataset**
+
+El agrupamiento jerárquico no solo calcula distancias: también debe decidir **cómo** se van a juntar los grupos a medida que se forma la jerarquía. Para ello existen diferentes métodos de enlace o *linkage*, como:
+
+-   Enlace completo (complete)
+
+-   Enlace simple (single)
+
+-   Enlace promedio (average)
+
+-   Centroide (centroid)
+
+    **Método de varianza mínima de Ward** (ward.D2)
+
+-   En la práctica, el método de Ward es uno de los más recomendados porque tiende a formar clústeres compactos y bien definidos.\
+    Para tu dataset de autismo usaremos **ward.D2**.
+
+```{r}
+dist_link_autismo <- hclust(d = dist_autismo, method = "ward.D2")
+
+```
+
+**Dendrograma para visualizar los patrones de agrupamiento (adaptado a tu data)**
+
+El dendrograma representa gráficamente el proceso de agrupamiento jerárquico generado por `hclust()`.\
+Permite identificar cuántos grupos parecen existir y cómo se relacionan entre sí los participantes:
+
+```{r}
+dist_autismo <- dist(autismo_escalado, method = "euclidean")
+
+```
+
+```{r}
+cluster_autismo <- hclust(d = dist_autismo, method = "ward.D2")
+
+```
+
+Ahora sí puedes visualizar el dendrograma:
+
+```{r}
+fviz_dend(cluster_autismo, cex = 0.7)
+
+```
+
+**¿Cuántos grupos se formaron en el dendrograma? — Adaptado a tu data de AUTISMO**
+
+En el análisis de agrupamiento jerárquico, el dendrograma no indica automáticamente cuántos grupos deben formarse; esta decisión depende del investigador al observar la estructura del árbol. En el dendrograma generado con los datos numéricos del test de autismo (P1–P10 y el puntaje total), se aprecia una separación clara entre varios conjuntos de participantes que comparten patrones similares en sus respuestas.
+
+Al evaluar la altura de los cortes y la distancia entre ramas, se observa que el dendrograma sugiere la presencia de tres grupos principales. Por ello, definimos k = 3 como el número de clústeres para representar adecuadamente estas agrupaciones dentro del conjunto de datos.
+
+A continuación se muestra el código adaptado a tu análisis:
+
+```{r}
+fviz_dend(dist_link_autismo, 
+          k = 3,
+          cex = 0.5,
+          k_colors = c("#2E9FDF", "#E7B800", "#FC4E07"),
+          color_labels_by_k = TRUE, 
+          rect = TRUE)
+```
+
+# **Agrupamiento con el algoritmo K-Means — Adaptado a tu dataset de AUTISMO**
+
+El método de agrupamiento K-means es uno de los algoritmos más utilizados para dividir un conjunto de datos en un número predefinido de grupos o clústeres. A diferencia del agrupamiento jerárquico, donde el número de grupos se decide después de analizar el dendrograma, en K-means debemos indicar desde el inicio cuántos clústeres queremos formar.
+
+En este análisis usaremos **solo las variables numéricas de tu dataset de autismo**, es decir:
+
+-   `Puntuacion_P1`
+
+-   `Puntuacion_P2`
+
+-   `Puntuacion_P10`
+
+-   `Resultado`
+
+Estas representan las características cuantitativas con las que se evaluará la similitud entre participantes.
+
+El objetivo del algoritmo es agrupar a los participantes que tienen patrones similares en estas puntuaciones. Para ello, cada clúster se representa mediante un **centroide**, que corresponde al promedio de todas las variables dentro de ese grupo.
+
+## ¿Cómo funciona el algoritmo K-Means en tu dataset?
+
+1.  **Elegimos cuántos grupos queremos formar**, por ejemplo K = 3.\
+    Esto significa que buscamos clasificar a los participantes del estudio de autismo en 3 grupos basados en sus puntuaciones.
+
+2.  **R selecciona aleatoriamente K participantes como centros iniciales**.\
+    Esos participantes iniciales sirven como referencia para comenzar la clasificación.
+
+3.  **Cada participante se asigna al centroide más cercano**, usando distancia euclidiana entre sus puntuaciones (`P1–P10 + Resultado`).
+
+4.  **Se recalcula el centroide de cada grupo** tomando el promedio de todas las puntuaciones de quienes pertenecen a ese clúster.
+
+5.  **El proceso se repite** (asignación → recálculo del centroide) hasta que los grupos se estabilicen.
+
+## Dataset empleado
+
+Para K-means utilizaremos el **mismo conjunto de variables numéricas** que usamos en el análisis jerárquico:
+
+```{r}
+autismo_data
+```
+
+## Estimando el número óptimo de clusters
+
+Como K-means requiere indicar el número de grupos, debemos estimarlo previamente.\
+Una forma sencilla y muy usada es el método del **codo (Elbow Method)**: se calculan agrupamientos para distintos valores de k y se observa cómo cambia la suma de cuadrados dentro de los clústeres (WSS).
+
+En R, esto se hace con la función:
+
+```{r}
+fviz_nbclust(autismo_escalado, kmeans, method = "wss")
+```
+
+Ahora graficamos la suma de cuadrados dentro de los clústeres usando los datos estandarizados del test (Puntuación P1–P10 y Resultado). Esta gráfica nos permite evaluar cuántos grupos serían adecuados para el algoritmo K-Means. En R utilizamos la función `fviz_nbclust()`, que calcula el WSS (within-cluster sum of squares) para distintos valores de k y los representa visualmente.
+
+```{r}
+fviz_nbclust(autismo_escalado, kmeans, nstart = 25, method = "wss") + 
+  geom_vline(xintercept = 3, linetype = 2)
+
+```
+
+El punto donde la curva forma una “rodilla” (elbow) suele indicar el número óptimo de clústeres. En este caso, la curva muestra un quiebre alrededor de k = 3, lo que sugiere que tres grupos representan adecuadamente la estructura de los datos.
+
+# **Cálculo del agrupamiento k-means (adaptado a tu data)**
+
+El algoritmo de k-means puede generar resultados diferentes dependiendo de los centros iniciales elegidos al azar. Para evitar soluciones inestables, es recomendable usar un valor alto de `nstart`. En este caso utilizamos nstart = 25, lo que significa que R probará 25 inicializaciones diferentes y seleccionará la mejor solución (la que minimiza la variación interna de los clústeres). Esto hace que los resultados sean más confiables.\
+En nuestro análisis, usamos tres clústeres, ya que ese número resultó ser el óptimo según el método del codo.
+
+```{r}
+set.seed(123)
+km_autismo <- kmeans(autismo_escalado, centers = 3, nstart = 25)
+```
+
+```{r}
+km_autismo
+```
+
+### *Resultados del análisis k-means en tu dataset*
+
+El resultado del agrupamiento k-means aplicado a tu dataset de **autismo** muestra dos salidas principales:
+
+### **1. Centros de los clústeres (Cluster means)**
+
+Corresponden a una matriz donde cada fila representa uno de los clústeres identificados (en tu caso, 1 a 3), y cada columna representa una de las variables numéricas estandarizadas de tu dataset (edad, puntajes, etc.).\
+Estos centros indican la “media” de cada clúster y permiten interpretar cómo se diferencian los grupos de pacientes según sus características.
+
+### **2. Vector de asignación de clúster (Clustering vector)**
+
+Es un vector que contiene un número entero (1, 2 o 3) para cada participante de tu dataset.\
+Este número indica a qué clúster pertenece cada paciente con autismo, según el algoritmo k-means.
+
+**Visualización de los clústeres**
+
+Para visualizar los clústeres formados por k-means, surge el problema de que tu dataset contiene más de dos variables numéricas, por lo que no es posible representarlas todas simultáneamente en un gráfico 2D.
+
+Una solución es aplicar Análisis de Componentes Principales (PCA), que reduce las dimensiones del dataset y permite representar la mayor parte de la variabilidad con solo dos ejes (PC1 y PC2). Esto facilita visualizar cómo se distribuyen los pacientes según sus características numéricas.
+
+La función `fviz_cluster()` del paquete factoextra permite mostrar los grupos producidos por k-means usando estas componentes principales.
+
+```{r}
+fviz_cluster(
+  km_autismo,
+  data = autismo_escalado,
+  palette = c("#2E9FDF", "#E7B800", "#FC4E07"),
+  ellipse.type = "euclid",
+  repel = TRUE,
+  ggtheme = theme_minimal()
+)
+
+```
+
+En el gráfico de clústeres k-means aplicado al dataset de autismo se observan tres grupos claramente diferenciados, representados por colores distintos. Cada punto corresponde a un participante, y su posición en el plano se obtiene a partir de las dos principales componentes del PCA (Dim1 y Dim2), que resumen gran parte de la variabilidad del conjunto de datos. Los clústeres están bien formados y muestran perfiles claramente separados: un grupo ubicado principalmente hacia la derecha del plano, otro hacia la izquierda y un tercero en una zona intermedia. Esto indica que los participantes del estudio presentan patrones diferenciados en las variables analizadas. Sin embargo, el gráfico por sí solo no permite determinar qué variables explican estas diferencias, por lo que se requieren análisis adicionales para caracterizar los clústeres y evaluar su utilidad clínica.
